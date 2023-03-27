@@ -1,7 +1,7 @@
-C=g++
+CC=mpic++
 CFLAGS= -Wall -g
 TARGET = parsplit
-SOURCES = $(wildcard *.c)
+SOURCES = $(wildcard *.cpp)
 
 all: $(TARGET)
 
