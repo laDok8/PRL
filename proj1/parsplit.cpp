@@ -7,6 +7,7 @@
 using namespace std;
 
 #define ROOT 0
+#define byte unsigned char
 
 int main(int argc, char **argv) {
     int rank = 0, size = 0;
