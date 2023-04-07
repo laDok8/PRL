@@ -1,6 +1,6 @@
 CC=mpic++
 CFLAGS= -Wall -g
-TARGET = parkmaens
+TARGET = parkmeans
 SOURCES = $(wildcard *.cpp)
 
 all: $(TARGET)
@@ -10,7 +10,7 @@ $(TARGET): $(SOURCES)
 
 # args= numbers of processes
 run: $(TARGET)
-	mpirun -oversubscribe -np 10 ./$(TARGET)
+	mpirun -oversubscribe -np 5 ./$(TARGET)
 
 clean:
 	rm $(TARGET)

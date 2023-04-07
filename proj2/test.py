@@ -1,30 +1,42 @@
-import subprocess
-import numpy as np
 from sklearn.cluster import KMeans
-
-# generate random numbers file
-numbers = np.random.randint(4, 33)
-subprocess.run(["dd", "if=/dev/random", f"bs=1", f"count={numbers}", "of=numbers"])
-
-# run run.sh and get output
-mpirun_output = subprocess.run(["bash", "run.sh"], capture_output=True, text=True).stdout.strip().split("\n")
+import numpy as np
+import sys
+import subprocess
 
 
-# process mpirun output and print it in desired format
-for line in mpirun_output:
-    tokens = line.strip().split()
-    centroid = tokens[0][1:6]
-    points = " ".join(tokens[2:])
-    print(f"[{centroid}] <- {points}")
+filename = "numbers"
+n_clusters = 4
+num_of_tests = 10
+num_of_numbers = 32
+file_name_to_check = "output.txt"
+file_name_to_check_with = "output_with.txt"
 
-# compare mpirun output with sklearn KMeans
-data = np.fromfile("numbers", dtype=np.uint8)
-subprocess.run(["rm", "numbers"])
-init_centroids = data[:4].reshape(-1, 1)
-kmeans = KMeans(n_clusters=4,init=init_centroids).fit(data.reshape(-1, 1))
+if __name__ == "__main__":
 
+    for i in range(num_of_tests):
+        print(f"Test {i+1}/{num_of_tests}...")
+        subprocess.run(["dd", "if=/dev/random", "bs=1", f"count={num_of_numbers}", f"of={filename}", "status=none"])
+        data = np.fromfile(filename,dtype=np.dtype('B'))
 
+        centroids = np.array([data[0], data[1], data[2], data[3]]).reshape(-1, 1)
 
-# print sklearn KMeans center and points
-for i in range(4):
-    print(f"[{kmeans.cluster_centers_[i][0]}]")
+        kmeans = KMeans(n_clusters=n_clusters, init=centroids, n_init=1).fit(data.reshape(-1, 1))
+
+        with open(file_name_to_check, "w", newline="\r") as f:
+            for i in range(n_clusters):
+                centroid = kmeans.cluster_centers_[i][0]
+                indices = np.where(kmeans.labels_ == i)[0]
+                f.write(f"[{centroid:.2f}]")
+                for j in range(len(indices)):
+                    f.write(f" {data[indices[j]]}")
+                f.write("\n")
+
+        with open(file_name_to_check_with, "w", newline="\r") as f:
+            subprocess.run(["mpirun", "--prefix", "/usr/local/share/OpenMPI", "-oversubscribe", "-np", f"{num_of_numbers}", "parkmeans"], stdout=f)
+
+        with open(file_name_to_check, "r") as f1, open(file_name_to_check_with, "r") as f2:
+            for line1, line2 in zip(f1, f2):
+                if line1.strip() != line2.strip():
+                    print("Test failed")
+                    sys.exit(1)
+        print("Test passed")

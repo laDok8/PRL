@@ -31,7 +31,7 @@ K dispozici máte
 C++ (přeložitelné pomocí mpic++ kvůli jednotnému skriptu test.sh, ne nutně objektově)
 Open MPI
 nic jiného
-Název souboru nyní bude parkmaens.c / parkmeans.cc
+Název souboru nyní bude parkmeans.c / parkmeans.cc
 
 #### VSTUP
 

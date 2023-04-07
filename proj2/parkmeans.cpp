@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
     vector<byte> distances(K);
     vector<int> meanSums(K), meanCounts(K), recvCounts(K), recvSums(K);
     vector<float> means(K);
-    std::cout << std::setprecision(2) << std::fixed;
+    cout << setprecision(2) << fixed;
 
     if (rank == ROOT) {
         //read file
@@ -74,15 +74,15 @@ int main(int argc, char **argv) {
         changed = false;
         if (rank == ROOT) {
             for (int i = 0; i < K; i++) {
-                if (recvCounts[i] != 0 && (recvSums[i] / recvCounts[i]) != means[i]) {
-                    means[i] = recvSums[i] / recvCounts[i];
+                if (recvCounts[i] != 0 && abs((static_cast<float>(recvSums[i]) / recvCounts[i])-means[i]) > 0.01 ) {
+                    means[i] = static_cast<float>(recvSums[i]) / recvCounts[i];
                     changed = true;
                 }
             }
         }
 
-        //broadcast is not needed, but imo makes code more readable
         MPI_Bcast(&changed, 1, MPI_C_BOOL, ROOT, MPI_COMM_WORLD);
+        MPI_Bcast(means.data(), K, MPI_FLOAT, ROOT, MPI_COMM_WORLD);
     } while (changed);
 
     //send argMin to root
@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
         }
         //print output
         for (int i = 0; i < K; i++) {
-            cout << "[" << means[i] << "] <- ";
+            cout << "[" << means[i] << "] ";
             for (byte b: meanVals[i])
                 cout << static_cast<int>(b) << " ";
             cout << endl;
