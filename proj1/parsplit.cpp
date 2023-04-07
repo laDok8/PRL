@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
 
     //bcast sendCount,data and median
     int sendCount = byteArray.size() / size;
-    MPI_Bcast(&sendCount, 1, MPI_INT, ROOT, MPI_COMM_WORLD);// TODO ??
+    MPI_Bcast(&sendCount, 1, MPI_INT, ROOT, MPI_COMM_WORLD);
     vector <byte> Si(sendCount);
 
     MPI_Bcast(&median, 1, MPI_BYTE, ROOT, MPI_COMM_WORLD);
