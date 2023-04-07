@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <numeric>
 #include <mpi.h>
 #include <algorithm>
 #include <iomanip>
@@ -22,7 +21,7 @@ int main(int argc, char **argv) {
     //per CPU
     int argMin;
     vector<byte> distances(K);
-    vector<int> meanSums(K), meanCounts(K), recvCounts(K), recvSums(K);
+    vector<int> meanSums(K), meanCounts(K), rcvCounts(K), rcvSums(K);
     vector<float> means(K);
     cout << setprecision(2) << fixed;
 
@@ -50,12 +49,10 @@ int main(int argc, char **argv) {
         copy(input.begin(), input.begin() + K, means.begin());
     }
 
-
     //bcast value and initial means
     MPI_Bcast(means.data(), K, MPI_FLOAT, ROOT, MPI_COMM_WORLD);
     byte myVal;
     MPI_Scatter(input.data(), 1, MPI_BYTE, &myVal, 1, MPI_BYTE, ROOT, MPI_COMM_WORLD);
-
 
     bool changed;
     do {
@@ -68,38 +65,33 @@ int main(int argc, char **argv) {
         fill(meanSums.begin(), meanSums.end(), 0);
         meanCounts[argMin] = 1;
         meanSums[argMin] = myVal;
-        MPI_Reduce(meanCounts.data(), recvCounts.data(), K, MPI_INT, MPI_SUM, ROOT, MPI_COMM_WORLD);
-        MPI_Reduce(meanSums.data(), recvSums.data(), K, MPI_INT, MPI_SUM, ROOT, MPI_COMM_WORLD);
+        MPI_Allreduce(meanCounts.data(), rcvCounts.data(), K, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+        MPI_Allreduce(meanSums.data(), rcvSums.data(), K, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
         changed = false;
-        if (rank == ROOT) {
-            for (int i = 0; i < K; i++) {
-                if (recvCounts[i] != 0 && abs((static_cast<float>(recvSums[i]) / recvCounts[i])-means[i]) > 0.01 ) {
-                    means[i] = static_cast<float>(recvSums[i]) / recvCounts[i];
-                    changed = true;
-                }
+        for (int i = 0; i < K; i++) {
+            if (rcvCounts[i] != 0 && abs((static_cast<float>(rcvSums[i]) / rcvCounts[i])-means[i]) > 0.01 ) {
+                means[i] = static_cast<float>(rcvSums[i]) / rcvCounts[i];
+                changed = true;
             }
         }
-
-        MPI_Bcast(&changed, 1, MPI_C_BOOL, ROOT, MPI_COMM_WORLD);
-        MPI_Bcast(means.data(), K, MPI_FLOAT, ROOT, MPI_COMM_WORLD);
     } while (changed);
 
     //send argMin to root
-    vector<byte> recvArgMin(size);
-    MPI_Gather(&argMin, 1, MPI_BYTE, recvArgMin.data(), 1, MPI_BYTE, ROOT, MPI_COMM_WORLD);
+    vector<byte> rcvArgMin(size);
+    MPI_Gather(&argMin, 1, MPI_BYTE, rcvArgMin.data(), 1, MPI_BYTE, ROOT, MPI_COMM_WORLD);
 
 
     if (rank == ROOT) {
-        vector <vector<byte>> meanVals(K);
+        vector <vector<byte>> meanVls(K);
         //put data from corresponding argMin to their K-mean
         for (int i = 0; i < size; i++) {
-            meanVals[recvArgMin[i]].push_back(input[i]);
+            meanVls[rcvArgMin[i]].push_back(input[i]);
         }
         //print output
         for (int i = 0; i < K; i++) {
             cout << "[" << means[i] << "] ";
-            for (byte b: meanVals[i])
+            for (byte b: meanVls[i])
                 cout << static_cast<int>(b) << " ";
             cout << endl;
         }
